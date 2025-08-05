@@ -1,4 +1,7 @@
 import { useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router'
+import { Login } from './pages/Auth'
+import { ThemeProvider } from './context/theme-provider'
 
 function App() {
   useEffect(() => {
@@ -9,23 +12,21 @@ function App() {
   }, [])
   
   return (
-    <div className='bg-background h-[100vh] w-full flex items-center justify-center'>
-      <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold text-foreground">
-          Desktop Application
-        </h1>
-        
-        <p className="text-muted-foreground">
-          Built with Electron, React & TypeScript
-        </p>
-        
-        {/* Simple status indicator */}
-        <div className="mt-6 inline-flex items-center gap-2 px-4 py-2 bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-300 rounded-lg text-sm">
-          <span>⚡</span>
-          Desktop App Running
-        </div>
+     <ThemeProvider
+      attribute="class"
+      defaultTheme="light"
+      enableSystem
+      disableTransitionOnChange
+    >
+    <Router>
+      <div className='bg-background h-[100vh] w-full'>
+        <Routes>
+          <Route path="/" element={<Login />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
+        </Routes>
       </div>
-    </div>
+    </Router>
+    </ThemeProvider>
   )
 }
 

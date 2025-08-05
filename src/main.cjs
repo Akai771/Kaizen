@@ -7,17 +7,14 @@ function createWindow() {
   console.log('🚀 Creating Electron window...')
   
   win = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 1280,
+    height: 720,
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
     },
-    // Remove the menu bar completely
     autoHideMenuBar: true,  // Hides menu bar (can be toggled with Alt)
-    // OR use this to completely remove it:
-    // frame: false,  // Removes title bar and menu entirely (more drastic)
   })
 
   // Completely disable the application menu
