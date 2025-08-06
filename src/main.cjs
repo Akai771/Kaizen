@@ -13,8 +13,10 @@ function createWindow() {
       preload: path.join(__dirname, 'preload.cjs'),
       nodeIntegration: false,
       contextIsolation: true,
+      webSecurity: false, // Sometimes needed for proper CSS behavior in dev
     },
     autoHideMenuBar: true,  // Hides menu bar (can be toggled with Alt)
+    show: false, // Don't show until ready to prevent flash
   })
 
   // Completely disable the application menu
@@ -30,6 +32,7 @@ function createWindow() {
   // Debug events
   win.webContents.on('did-finish-load', () => {
     console.log('✅ Page finished loading')
+    win.show() // Show window after load to prevent flash
   })
 
   win.webContents.on('did-fail-load', (event, errorCode, errorDescription, validatedURL) => {

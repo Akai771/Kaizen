@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, Zap, AlertCircle, Sun, Moon, Chrome } from 'lucide-react';
+import { Eye, EyeOff, Mail, Lock, User, Zap, AlertCircle, Sun, Moon } from 'lucide-react';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -8,9 +8,11 @@ import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 
-interface LoginFormData {
+interface SignupFormData {
+  name: string;
   email: string;
   password: string;
+  confirmPassword: string;
 }
 
 // Theme switcher component using next-themes
@@ -37,30 +39,37 @@ const ThemeSwitcher: React.FC = () => {
   );
 };
 
-const Login: React.FC = () => {
-  const [formData, setFormData] = useState<LoginFormData>({
+const Signup: React.FC = () => {
+  const [formData, setFormData] = useState<SignupFormData>({
+    name: '',
     email: '',
-    password: ''
+    password: '',
+    confirmPassword: ''
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
-  const [errors, setErrors] = useState<Partial<LoginFormData>>({});
-  const [rememberMe, setRememberMe] = useState(false);
+  const [errors, setErrors] = useState<Partial<SignupFormData>>({});
+  const [agreeToTerms, setAgreeToTerms] = useState(false);
   const Navigate = useNavigate();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     // Clear error when user starts typing
-    if (errors[name as keyof LoginFormData]) {
+    if (errors[name as keyof SignupFormData]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
     }
   };
 
-
-
   const validateForm = (): boolean => {
-    const newErrors: Partial<LoginFormData> = {};
+    const newErrors: Partial<SignupFormData> = {};
+    
+    if (!formData.name) {
+      newErrors.name = 'Name is required';
+    } else if (formData.name.length < 2) {
+      newErrors.name = 'Name must be at least 2 characters';
+    }
     
     if (!formData.email) {
       newErrors.email = 'Email is required';
@@ -72,11 +81,14 @@ const Login: React.FC = () => {
       newErrors.password = 'Password is required';
     } else if (formData.password.length < 6) {
       newErrors.password = 'Password must be at least 6 characters';
+    } else if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(formData.password)) {
+      newErrors.password = 'Password must contain at least one uppercase letter, one lowercase letter, and one number';
     }
-
-    if(formData.email == 'admin@example.com' && formData.password == 'admin123') {
-      Navigate('/dashboard');
     
+    if (!formData.confirmPassword) {
+      newErrors.confirmPassword = 'Please confirm your password';
+    } else if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
     }
 
     setErrors(newErrors);
@@ -86,14 +98,19 @@ const Login: React.FC = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm()) return;
+    
+    if (!agreeToTerms) {
+      alert('Please agree to the terms and conditions');
+      return;
+    }
 
     setIsLoading(true);
     try {
-      // TODO: Implement authentication logic
-      console.log('Login attempt:', formData);
+      // TODO: Implement signup logic
+      console.log('Signup attempt:', formData);
       await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
     } catch (error) {
-      console.error('Login error:', error);
+      console.error('Signup error:', error);
     } finally {
       setIsLoading(false);
     }
@@ -115,24 +132,53 @@ const Login: React.FC = () => {
           </div>
           <div className="space-y-3">
             <div className="text-4xl font-bold">
-              Welcome to <span className='text-primary'>Kaizen</span> 
+              Join <span className='text-primary'>Kaizen</span> 
             </div>
             <span className="text-muted-foreground text-sm">
-              AI-powered task management & expense tracking
+              Start your journey with AI-powered productivity
             </span>
           </div>
         </div>
 
-        {/* Login Form */}
+        {/* Signup Form */}
         <Card>
           <CardHeader className="space-y-3 pb-8">
-            <CardTitle className="text-3xl font-bold text-center">Sign in</CardTitle>
+            <CardTitle className="text-3xl font-bold text-center">Create Account</CardTitle>
             <CardDescription className="text-center text-base">
-              Enter your email and password to access your account
+              Fill in your details to get started
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Name Field */}
+              <div className="space-y-3">
+                <Label htmlFor="name" className="text-base font-medium">
+                  Full Name
+                </Label>
+                <div className="relative group">
+                  <User className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <Input
+                    id="name"
+                    name="name"
+                    type="text"
+                    placeholder="Enter your full name"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    className={`pl-12 h-12 text-base ${
+                      errors.name ? 'border-destructive focus-visible:border-destructive' : ''
+                    }`}
+                  />
+                </div>
+                {errors.name && (
+                  <Alert variant="destructive" className="py-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      {errors.name}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+
               {/* Email Field */}
               <div className="space-y-3">
                 <Label htmlFor="email" className="text-base font-medium">
@@ -173,7 +219,7 @@ const Login: React.FC = () => {
                     id="password"
                     name="password"
                     type={showPassword ? 'text' : 'password'}
-                    placeholder="Enter your password"
+                    placeholder="Create a password"
                     value={formData.password}
                     onChange={handleInputChange}
                     className={`pl-12 pr-12 h-12 text-base ${
@@ -204,28 +250,67 @@ const Login: React.FC = () => {
                 )}
               </div>
 
-              {/* Remember Me & Forgot Password */}
-              <div className="flex items-center justify-between pt-2">
-                <div className="flex items-center space-x-3">
-                  <input
-                    id="remember"
-                    type="checkbox"
-                    checked={rememberMe}
-                    onChange={(e) => setRememberMe(e.target.checked)}
-                    className="h-4 w-4 rounded border-border text-primary"
+              {/* Confirm Password Field */}
+              <div className="space-y-3">
+                <Label htmlFor="confirmPassword" className="text-base font-medium">
+                  Confirm Password
+                </Label>
+                <div className="relative group">
+                  <Lock className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-muted-foreground group-focus-within:text-primary transition-colors" />
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    placeholder="Confirm your password"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    className={`pl-12 pr-12 h-12 text-base ${
+                      errors.confirmPassword ? 'border-destructive focus-visible:border-destructive' : ''
+                    }`}
                   />
-                  <Label htmlFor="remember" className="text-sm font-medium cursor-pointer">
-                    Remember me
-                  </Label>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-2 top-1/2 transform -translate-y-1/2 h-8 w-8 p-0 hover:bg-transparent"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  >
+                    {showConfirmPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+                    )}
+                  </Button>
                 </div>
-                <Button
-                  type="button"
-                  variant="link"
-                  className="p-0 h-auto text-sm font-medium"
-                  onClick={() => Navigate('/forgot-password')}
-                >
-                  Forgot password?
-                </Button>
+                {errors.confirmPassword && (
+                  <Alert variant="destructive" className="py-2">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription className="text-sm">
+                      {errors.confirmPassword}
+                    </AlertDescription>
+                  </Alert>
+                )}
+              </div>
+
+              {/* Terms and Conditions */}
+              <div className="flex items-start space-x-3 pt-2">
+                <input
+                  id="terms"
+                  type="checkbox"
+                  checked={agreeToTerms}
+                  onChange={(e) => setAgreeToTerms(e.target.checked)}
+                  className="h-4 w-4 rounded border-border text-primary mt-0.5"
+                />
+                <Label htmlFor="terms" className="text-sm font-medium cursor-pointer leading-relaxed">
+                  I agree to the{' '}
+                  <Button variant="link" className="p-0 h-auto text-sm font-semibold">
+                    Terms of Service
+                  </Button>
+                  {' '}and{' '}
+                  <Button variant="link" className="p-0 h-auto text-sm font-semibold">
+                    Privacy Policy
+                  </Button>
+                </Label>
               </div>
 
               {/* Submit Button */}
@@ -237,30 +322,16 @@ const Login: React.FC = () => {
                 {isLoading && (
                   <div className="inline-block mr-3 h-5 w-5 animate-spin rounded-full border-2 border-primary-foreground border-t-transparent" />
                 )}
-                {isLoading ? 'Signing in...' : 'Sign in'}
+                {isLoading ? 'Creating Account...' : 'Create Account'}
               </Button>
             </form>
 
-            {/* Social Media Login divider */}
-            <div className="flex items-center justify-center">
-              <div className="w-full border-t border-muted" />
-              <span className="w-full flex justify-center text-muted-foreground text-sm">or continue with</span>
-              <div className="w-full border-t border-muted" />
-            </div>
-
-            {/* Social Media Login Buttons */}
-            <div className="flex space-x-4">
-              <Button variant="outline" className="w-full h-12" onClick={() => Navigate('/task-management')}>
-                <Chrome/>
-                Google
-              </Button>
-            </div>
             {/* Footer */}
             <div className="text-center pt-6">
               <p className="text-muted-foreground text-sm">
-                Don't have an account?{' '}
-                <Button variant="link" className="p-0 h-auto font-semibold" onClick={() => Navigate('/signup')}>
-                  Sign up
+                Already have an account?{' '}
+                <Button variant="link" className="p-0 h-auto font-semibold" onClick={() => Navigate('/')}>
+                  Sign in
                 </Button>
               </p>
             </div>
@@ -272,4 +343,4 @@ const Login: React.FC = () => {
   );
 };
 
-export default Login;
+export default Signup;
