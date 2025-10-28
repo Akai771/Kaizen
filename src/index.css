@@ -2,35 +2,8 @@
 @import "tailwindcss/components";
 @import "tailwindcss/utilities";
 
+/* Default Theme - Purple & Green */
 :root {
-  --background: 0 0% 100%;
-  --foreground: 20 14.3% 4.1%;
-  --muted: 60 4.8% 95.9%;
-  --muted-foreground: 25 5.3% 44.7%;
-  --popover: 0 0% 100%;
-  --popover-foreground: 20 14.3% 4.1%;
-  --card: 0 0% 100%;
-  --card-foreground: 20 14.3% 4.1%;
-  --border: 20 5.9% 90%;
-  --input: 20 5.9% 90%;
-  --primary: 73.44 98.97% 61.96%;
-  --primary-foreground: 26 83.3% 14.1%;
-  --secondary: 60 4.8% 95.9%;
-  --secondary-foreground: 24 9.8% 10%;
-  --accent: 60 4.8% 95.9%;
-  --accent-foreground: 24 9.8% 10%;
-  --destructive: 0 84.2% 60.2%;
-  --destructive-foreground: 60 9.1% 97.8%;
-  --ring: 20 14.3% 4.1%;
-  --chart-1: 12 76% 61%;
-  --chart-2: 173 58% 39%;
-  --chart-3: 197 37% 24%;
-  --chart-4: 43 74% 66%;
-  --chart-5: 27 87% 67%;
-  --radius: 0.5rem;
-}
-
-.dark {
   --background: 20 14.3% 4.1%;
   --foreground: 60 9.1% 97.8%;
   --muted: 12 6.5% 15.1%;
@@ -50,11 +23,208 @@
   --destructive: 0 62.8% 30.6%;
   --destructive-foreground: 60 9.1% 97.8%;
   --ring: 35.5 91.7% 32.9%;
+  --radius: 0.5rem;
   --chart-1: 220 70% 50%;
   --chart-2: 160 60% 45%;
   --chart-3: 30 80% 55%;
   --chart-4: 280 65% 60%;
   --chart-5: 340 75% 55%;
+}
+
+/* Cloud Flare - Orange & Gold */
+:root.theme1 {
+  --background: 0 0% 7%;
+  --foreground: 0 0% 100%;
+  --muted: 0 0% 16%;
+  --muted-foreground: 0 0% 80%;
+  --popover: 0 0% 6%;
+  --popover-foreground: 0 0% 100%;
+  --card: 0 0% 6%;
+  --card-foreground: 0 0% 100%;
+  --border: 0 0% 16%;
+  --input: 0 0% 16%;
+  --primary: 9 100% 60%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 51 100% 50%;
+  --secondary-foreground: 0 0% 0%;
+  --accent: 0 0% 16%;
+  --accent-foreground: 0 0% 100%;
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  --ring: 9 100% 60%;
+  --chart-1: 9 100% 60%;
+  --chart-2: 51 100% 50%;
+  --chart-3: 197 37% 24%;
+  --chart-4: 43 74% 66%;
+  --chart-5: 27 87% 67%;
+}
+
+/* ShadCN Rose Theme */
+:root.theme2 {
+  --background: 20 14.3% 4.1%;
+  --foreground: 0 0% 95%;
+  --muted: 0 0% 15%;
+  --muted-foreground: 240 5% 64.9%;
+  --popover: 0 0% 9%;
+  --popover-foreground: 0 0% 95%;
+  --card: 24 9.8% 10%;
+  --card-foreground: 0 0% 95%;
+  --border: 240 3.7% 15.9%;
+  --input: 240 3.7% 15.9%;
+  --primary: 346.8 77.2% 49.8%;
+  --primary-foreground: 355.7 100% 97.3%;
+  --secondary: 240 3.7% 15.9%;
+  --secondary-foreground: 0 0% 98%;
+  --accent: 12 6.5% 15.1%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 62.8% 30.6%;
+  --destructive-foreground: 0 85.7% 97.3%;
+  --ring: 346.8 77.2% 49.8%;
+  --chart-1: 220 70% 50%;
+  --chart-2: 160 60% 45%;
+  --chart-3: 30 80% 55%;
+  --chart-4: 280 65% 60%;
+  --chart-5: 340 75% 55%;
+}
+
+/* Discord Theme */
+:root.theme3 {
+  --background: 217.5 9.09% 17.25%;
+  --foreground: 334 34% 98%;
+  --muted: 210 9.09% 12.94%;
+  --muted-foreground: 334 0% 60.77%;
+  --popover: 210 9.09% 12.94%;
+  --popover-foreground: 334 34% 98%;
+  --card: 210 9.09% 12.94%;
+  --card-foreground: 334 34% 98%;
+  --border: 334 0% 18.46%;
+  --input: 214.29 5.04% 27.25%;
+  --primary: 226.73 58.43% 65.1%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 214.29 5.04% 27.25%;
+  --secondary-foreground: 334 0% 100%;
+  --accent: 217.5 9.09% 17.25%;
+  --accent-foreground: 226.73 58.43% 65.1%;
+  --destructive: 0 86.89% 48.16%;
+  --destructive-foreground: 0 0% 0%;
+  --ring: 217.5 9.09% 17.25%;
+  --chart-1: 226.73 58.43% 65.1%;
+  --chart-2: 214.29 5.04% 27.25%;
+  --chart-3: 217.5 9.09% 17.25%;
+  --chart-4: 214.29 5.04% 30.25%;
+  --chart-5: 226.73 61.43% 65.1%;
+}
+
+/* Claude Theme */
+:root.theme4 {
+  --background: 60 3.53% 16.67%;
+  --foreground: 60 5.45% 89.22%;
+  --muted: 45 5.41% 14.51%;
+  --muted-foreground: 51.43 8.86% 69.02%;
+  --popover: 48 8.2% 11.96%;
+  --popover-foreground: 60 5.45% 89.22%;
+  --card: 45 6.25% 12.55%;
+  --card-foreground: 60 5.45% 89.22%;
+  --border: 60 5.08% 23.14%;
+  --input: 52.5 5.13% 30.59%;
+  --primary: 18 57% 44%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 249.6 25.25% 19.41%;
+  --secondary-foreground: 46.67 8.41% 79.02%;
+  --accent: 48 10.64% 9.22%;
+  --accent-foreground: 51.43 25.93% 94.71%;
+  --destructive: 0 84.24% 60.2%;
+  --destructive-foreground: 0 0% 100%;
+  --ring: 210 74.8% 49.8%;
+  --chart-1: 18 57% 44%;
+  --chart-2: 249.6 25.25% 19.41%;
+  --chart-3: 48 10.64% 9.22%;
+  --chart-4: 249.6 25.25% 22.41%;
+  --chart-5: 18 60% 44%;
+}
+
+/* Dark Theme - Green & Teal */
+:root.theme5 {
+  --background: 0 0% 6.67%;
+  --foreground: 0 0% 93.33%;
+  --muted: 0 0% 14.9%;
+  --muted-foreground: 0 0% 73.33%;
+  --popover: 0 0% 6.67%;
+  --popover-foreground: 0 0% 93.33%;
+  --card: 0 0% 6.67%;
+  --card-foreground: 0 0% 93.33%;
+  --border: 0 0% 14.9%;
+  --input: 0 0% 14.9%;
+  --primary: 150.24 50% 40%;
+  --primary-foreground: 0 0% 93.33%;
+  --secondary: 0 0% 14.9%;
+  --secondary-foreground: 0 0% 93.33%;
+  --accent: 0 0% 14.9%;
+  --accent-foreground: 0 0% 93.33%;
+  --destructive: 0 50% 50%;
+  --destructive-foreground: 0 0% 93.33%;
+  --ring: 150 50% 40%;
+  --chart-1: 150.24 50% 40%;
+  --chart-2: 0 0% 14.9%;
+  --chart-3: 0 0% 14.9%;
+  --chart-4: 0 0% 17.9%;
+  --chart-5: 150.24 53% 40%;
+}
+
+/* Github Theme */
+:root.theme6 {
+  --background: 220 23% 5%;
+  --foreground: 210 25% 95%;
+  --muted: 220 12% 15%;
+  --muted-foreground: 220 12% 65%;
+  --popover: 220 23% 2%;
+  --popover-foreground: 0 0% 100%;
+  --card: 220 23% 3%;
+  --card-foreground: 0 0% 100%;
+  --border: 220 13% 10%;
+  --input: 220 13% 13%;
+  --primary: 210 25% 95%;
+  --primary-foreground: 210 25% 35%;
+  --secondary: 210 15% 25%;
+  --secondary-foreground: 210 15% 85%;
+  --accent: 220 23% 20%;
+  --accent-foreground: 220 23% 80%;
+  --destructive: 2 81% 55%;
+  --destructive-foreground: 0 0% 100%;
+  --ring: 210 25% 95%;
+  --chart-1: 210 25% 95%;
+  --chart-2: 210 15% 25%;
+  --chart-3: 220 23% 20%;
+  --chart-4: 210 15% 28%;
+  --chart-5: 210 28% 95%;
+}
+
+/* HiTown Theme */
+:root.theme7 {
+  --background: 229 41% 4%;
+  --foreground: 229 23% 99%;
+  --muted: 229 12% 14%;
+  --muted-foreground: 229 10% 63%;
+  --popover: 229 41% 5%;
+  --popover-foreground: 0 0% 100%;
+  --card: 229 41% 5%;
+  --card-foreground: 0 0% 100%;
+  --border: 215 27.9% 16.9%;
+  --input: 215 27.9% 16.9%;
+  --primary: 355.63 90.57% 58.43%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 229 14% 8%;
+  --secondary-foreground: 229 14% 68%;
+  --accent: 229 23% 17%;
+  --accent-foreground: 229 23% 77%;
+  --destructive: 3 89% 54%;
+  --destructive-foreground: 0 0% 100%;
+  --ring: 229 100% 62%;
+  --chart-1: 355.63 90.57% 58.43%;
+  --chart-2: 229 14% 8%;
+  --chart-3: 229 23% 17%;
+  --chart-4: 229 14% 11%;
+  --chart-5: 355.63 93.57% 58.43%;
 }
 
 @layer base {
@@ -65,6 +235,32 @@
     @apply bg-background text-foreground;
     font-feature-settings: "rlig" 1, "calt" 1;
   }
+}
+
+/* Custom Scrollbar Styling */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: hsl(var(--primary)) hsl(var(--background));
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: hsl(var(--background));
+  border-radius: 5px;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: hsl(var(--primary));
+  border-radius: 5px;
+  border: 2px solid hsl(var(--background));
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: hsl(var(--primary) / 0.8);
 }
 
 /* Additional styles for better Electron integration */
@@ -180,4 +376,8 @@ body {
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+::selection{
+  background: white;
 }

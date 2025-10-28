@@ -1,33 +1,53 @@
-import { useState } from 'react'
-import { Send, Bot, User, Mic } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Send, Bot, User, Mic, CheckCircle2, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
+import { processAIMessage, executeTaskCreation } from '@/services/aiService'
+import { toast } from 'sonner'
 
 interface Message {
   id: string
   content: string
   sender: 'user' | 'ai'
   timestamp: Date
+  taskCreation?: {
+    listName: string
+    taskCount: number
+    status: 'pending' | 'success' | 'error'
+    listId?: string
+  }
 }
 
 interface AIChatProps {
   onClose?: () => void
+  onTasksCreated?: (listId: string) => void
 }
 
-const AIChat: React.FC<AIChatProps> = () => {
+const AIChat: React.FC<AIChatProps> = ({ onTasksCreated }) => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      content: 'Hello! I\'m Hiro. How can I help you manage your tasks today?',
+      content: 'Hello! I\'m Hiro, your AI task assistant. I can help you create and organize tasks. Try asking me to "create a list for planning a birthday party" or "help me plan a vacation"!',
       sender: 'ai',
       timestamp: new Date()
     }
   ])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const scrollAreaRef = useRef<HTMLDivElement>(null)
+
+  // Auto-scroll to bottom when messages change
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      const scrollContainer = scrollAreaRef.current.querySelector('[data-radix-scroll-area-viewport]')
+      if (scrollContainer) {
+        scrollContainer.scrollTop = scrollContainer.scrollHeight
+      }
+    }
+  }, [messages])
 
   const handleSendMessage = async () => {
-    if (!inputValue.trim()) return
+    if (!inputValue.trim() || isLoading) return
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -40,17 +60,81 @@ const AIChat: React.FC<AIChatProps> = () => {
     setInputValue('')
     setIsLoading(true)
 
-    // Simulate AI response (replace with actual AI integration)
-    setTimeout(() => {
-      const aiMessage: Message = {
+    try {
+      // Build conversation history for context
+      const conversationHistory = messages.map(msg => ({
+        role: msg.sender === 'ai' ? 'assistant' as const : 'user' as const,
+        content: msg.content
+      }))
+
+      // Process message with OpenAI
+      const aiResponse = await processAIMessage(inputValue, conversationHistory)
+
+      if (aiResponse.action === 'create_tasks' && aiResponse.data) {
+        // Show initial AI response with pending task creation
+        const taskCreationMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: aiResponse.data.message,
+          sender: 'ai',
+          timestamp: new Date(),
+          taskCreation: {
+            listName: aiResponse.data.listName,
+            taskCount: aiResponse.data.tasks.length,
+            status: 'pending'
+          }
+        }
+        
+        setMessages(prev => [...prev, taskCreationMessage])
+
+        // Execute task creation
+        const result = await executeTaskCreation(aiResponse.data)
+        
+        // Update message with creation status
+        setMessages(prev => prev.map(msg => 
+          msg.id === taskCreationMessage.id
+            ? {
+                ...msg,
+                taskCreation: {
+                  ...msg.taskCreation!,
+                  status: result.success ? 'success' : 'error',
+                  listId: result.listId
+                }
+              }
+            : msg
+        ))
+
+        if (result.success) {
+          toast.success(`Created "${aiResponse.data.listName}" with ${aiResponse.data.tasks.length} tasks!`)
+          // Notify parent component about new tasks
+          if (onTasksCreated && result.listId) {
+            onTasksCreated(result.listId)
+          }
+        } else {
+          toast.error('Failed to create tasks. Please try again.')
+        }
+      } else {
+        // Regular conversation message
+        const aiMessage: Message = {
+          id: (Date.now() + 1).toString(),
+          content: aiResponse.message,
+          sender: 'ai',
+          timestamp: new Date()
+        }
+        setMessages(prev => [...prev, aiMessage])
+      }
+    } catch (error) {
+      console.error('Error in AI chat:', error)
+      const errorMessage: Message = {
         id: (Date.now() + 1).toString(),
-        content: 'I understand you want help with your tasks. I can help you organize, prioritize, and manage your todo items. What specific task management assistance do you need?',
+        content: 'I apologize, but I encountered an error. Please make sure your OpenAI API key is configured correctly in your environment variables (VITE_OPENAI_API or VITE_OPENAI_API_KEY).',
         sender: 'ai',
         timestamp: new Date()
       }
-      setMessages(prev => [...prev, aiMessage])
+      setMessages(prev => [...prev, errorMessage])
+      toast.error('Failed to process message')
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -74,7 +158,7 @@ const AIChat: React.FC<AIChatProps> = () => {
       </div>
 
       {/* Messages */}
-      <ScrollArea className="flex-1 py-4 min-h-0">
+      <ScrollArea ref={scrollAreaRef} className="flex-1 py-4 min-h-0">
         <div className="space-y-4 pr-4">
           {messages.map((message) => (
             <div
@@ -94,18 +178,55 @@ const AIChat: React.FC<AIChatProps> = () => {
                   <Bot className="w-3 h-3" />
                 )}
               </div>
-              <div className={`max-w-[80%] rounded-lg px-3 py-2 ${
-                message.sender === 'user'
-                  ? 'bg-primary text-primary-foreground'
-                  : 'bg-muted text-muted-foreground'
-              }`}>
-                <p className="text-sm">{message.content}</p>
-                <p className={`text-xs mt-1 opacity-70`}>
-                  {message.timestamp.toLocaleTimeString([], { 
-                    hour: '2-digit', 
-                    minute: '2-digit' 
-                  })}
-                </p>
+              <div className={`max-w-[80%] ${
+                message.sender === 'user' ? 'items-end' : 'items-start'
+              } flex flex-col gap-2`}>
+                <div className={`rounded-lg px-3 py-2 ${
+                  message.sender === 'user'
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
+                }`}>
+                  <p className="text-sm">{message.content}</p>
+                  <p className={`text-xs mt-1 opacity-70`}>
+                    {message.timestamp.toLocaleTimeString([], { 
+                      hour: '2-digit', 
+                      minute: '2-digit' 
+                    })}
+                  </p>
+                </div>
+                
+                {/* Task Creation Status Card */}
+                {message.taskCreation && (
+                  <div className={`rounded-lg border px-3 py-2 text-sm ${
+                    message.taskCreation.status === 'success' 
+                      ? 'bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800' 
+                      : message.taskCreation.status === 'error'
+                      ? 'bg-red-50 dark:bg-red-950 border-red-200 dark:border-red-800'
+                      : 'bg-blue-50 dark:bg-blue-950 border-blue-200 dark:border-blue-800'
+                  }`}>
+                    <div className="flex items-center gap-2">
+                      {message.taskCreation.status === 'success' ? (
+                        <CheckCircle2 className="w-4 h-4 text-green-600 dark:text-green-400" />
+                      ) : message.taskCreation.status === 'error' ? (
+                        <XCircle className="w-4 h-4 text-red-600 dark:text-red-400" />
+                      ) : (
+                        <div className="w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full animate-spin" />
+                      )}
+                      <div className="flex-1">
+                        <p className="font-medium">
+                          {message.taskCreation.status === 'success' 
+                            ? '✓ Tasks Created' 
+                            : message.taskCreation.status === 'error'
+                            ? '✗ Creation Failed'
+                            : 'Creating Tasks...'}
+                        </p>
+                        <p className="text-xs opacity-80">
+                          {message.taskCreation.listName} • {message.taskCreation.taskCount} tasks
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ))}

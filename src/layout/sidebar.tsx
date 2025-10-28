@@ -2,11 +2,13 @@ import React from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 import {
   CheckSquare,
-  Settings,
   SidebarClose,
   SidebarOpen,
-  ReceiptIndianRupee as Receipt
+  ReceiptIndianRupee as Receipt,
+  User,
+  LogOut
 } from 'lucide-react'
+import { useAuth } from '@/context/auth-context'
 
 interface SidebarProps {
   onLinkClick?: () => void;
@@ -27,8 +29,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   toggleCollapsed
 }) => {
   const navigate = useNavigate()
+  const { signOut } = useAuth()
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
+    await signOut()
     localStorage.removeItem('token')
     navigate('/')
     if (onLinkClick) {
@@ -103,15 +107,34 @@ const Sidebar: React.FC<SidebarProps> = ({
         })}
       </nav>
       
-      <div className="p-2 border-t border-border">
+      <div className="p-2 border-t border-border space-y-1">
+        <NavLink
+          to="/profile"
+          onClick={onLinkClick}
+          className={({ isActive }) =>
+            `flex items-center ${
+              isCollapsed ? 'justify-center px-2' : 'px-4'
+            } py-2 rounded transition-colors ${
+              isActive
+                ? 'bg-primary text-primary-foreground'
+                : 'hover:bg-accent hover:text-accent-foreground'
+            }`
+          }
+          title={isCollapsed ? 'Profile' : ''}
+        >
+          <User className={`w-5 h-5 ${isCollapsed ? '' : 'mr-3'}`} />
+          {!isCollapsed && 'Profile'}
+        </NavLink>
 
         <button
           onClick={handleLogout}
-          className={`flex items-center ${isCollapsed ? 'justify-center w-full' : 'w-full px-4'} py-2 rounded transition-colors hover:bg-accent hover:text-accent-foreground`}
-          title={isCollapsed ? "Logout" : ""}
+          className={`flex items-center w-full ${
+            isCollapsed ? 'justify-center px-2' : 'px-4'
+          } py-2 rounded transition-colors hover:bg-destructive/10 hover:text-destructive`}
+          title={isCollapsed ? 'Logout' : ''}
         >
-          <Settings className={`w-5 h-5 ${isCollapsed ? '' : 'mr-3'}`} />
-          {!isCollapsed && 'Settings'}
+          <LogOut className={`w-5 h-5 ${isCollapsed ? '' : 'mr-3'}`} />
+          {!isCollapsed && 'Logout'}
         </button>
       </div>
     </div>

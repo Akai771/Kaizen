@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, List, Calendar, Bot } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,89 +17,165 @@ import {
 import { Input } from '@/components/ui/input';
 import TaskCard from '@/components/task-card';
 import AIChatSheet from '@/components/ai-chat-sheet';
-
-// Data Interfaces
-interface Task {
-  id: string;
-  title: string;
-  completed: boolean;
-  listId: string;
-  description?: string;
-  dueDate?: Date;
-}
-
-interface TaskList {
-  id: string;
-  name: string;
-}
+import { toast } from 'sonner';
+import {
+  getTaskLists,
+  createTaskList,
+  updateTaskList,
+  deleteTaskList,
+  getAllTasks,
+  createTask,
+  updateTask,
+  toggleTaskCompletion,
+  deleteTask,
+  reorderTasks,
+} from '@/services';
+import type { Task, TaskList } from '@/types/database.types';
 
 const TaskManagement = () => {
   // State
-  const [taskLists, setTaskLists] = useState<TaskList[]>([
-    { id: '1', name: 'Birthday' },
-    { id: '2', name: 'Movie Booking' },
-  ]);
-
-  const [tasks, setTasks] = useState<Task[]>([
-    { id: 't1', title: 'Order food', completed: false, listId: '1' },
-    { id: 't2', title: 'Book a cake', completed: false, listId: '1' },
-    { id: 't3', title: 'Order Burgers', completed: false, listId: '1' },
-    { id: 't4', title: 'Order Wafers', completed: true, listId: '1' },
-    { id: 't5', title: 'Decorations', completed: true, listId: '1' },
-    { id: 't6', title: 'Invite Friends & Family', completed: true, listId: '1' },
-    { id: 't7', title: 'Book movie tickets', completed: false, listId: '2' },
-  ]);
-
+  const [taskLists, setTaskLists] = useState<TaskList[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [isCreateListOpen, setIsCreateListOpen] = useState(false);
   const [newListName, setNewListName] = useState('');
   const [isAIChatOpen, setIsAIChatOpen] = useState(false);
   const [selectedListId, setSelectedListId] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
-  // CRUD Operations
-  const addTaskList = () => {
-    if (newListName.trim()) {
-      const newList = {
-        id: `l${Date.now()}`,
-        name: newListName.trim(),
-      };
-      setTaskLists(prev => [...prev, newList]);
-      setNewListName('');
-      setIsCreateListOpen(false);
+  // Load data on mount
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    try {
+      setIsLoading(true);
+      const [listsData, tasksData] = await Promise.all([
+        getTaskLists(),
+        getAllTasks(),
+      ]);
+      setTaskLists(listsData);
+      setTasks(tasksData);
+    } catch (error) {
+      console.error('Error loading data:', error);
+      toast.error('Failed to load tasks');
+    } finally {
+      setIsLoading(false);
     }
   };
 
-  const deleteList = (listId: string) => {
-    setTaskLists(prev => prev.filter(list => list.id !== listId));
-    setTasks(prev => prev.filter(task => task.listId !== listId));
+  // CRUD Operations
+  const addTaskList = async () => {
+    if (newListName.trim()) {
+      try {
+        const newList = await createTaskList(newListName.trim());
+        setTaskLists(prev => [...prev, newList]);
+        setNewListName('');
+        setIsCreateListOpen(false);
+        toast.success('List created successfully');
+      } catch (error) {
+        console.error('Error creating list:', error);
+        toast.error('Failed to create list');
+      }
+    }
   };
 
-  const renameList = (listId: string, newName: string) => {
-    setTaskLists(prev => prev.map(list => list.id === listId ? { ...list, name: newName } : list));
+  const deleteList = async (listId: string) => {
+    try {
+      await deleteTaskList(listId);
+      setTaskLists(prev => prev.filter(list => list.id !== listId));
+      setTasks(prev => prev.filter(task => task.list_id !== listId));
+      toast.success('List deleted successfully');
+    } catch (error) {
+      console.error('Error deleting list:', error);
+      toast.error('Failed to delete list');
+    }
   };
 
-  const addTask = (taskData: Omit<Task, 'id' | 'completed'>) => {
-    const newTask = {
-      ...taskData,
-      id: `t${Date.now()}`,
-      completed: false,
-    };
-    setTasks(prev => [...prev, newTask]);
+  const renameList = async (listId: string, newName: string) => {
+    try {
+      await updateTaskList(listId, { name: newName });
+      setTaskLists(prev => prev.map(list => list.id === listId ? { ...list, name: newName } : list));
+      toast.success('List renamed successfully');
+    } catch (error) {
+      console.error('Error renaming list:', error);
+      toast.error('Failed to rename list');
+    }
   };
 
-  const updateTask = (taskId: string, taskData: Partial<Omit<Task, 'id'>>) => {
-    setTasks(prev => prev.map(task => task.id === taskId ? { ...task, ...taskData } : task));
+  const addTask = async (taskData: { listId: string; title: string; description?: string; dueDate?: Date }) => {
+    try {
+      const newTask = await createTask({
+        list_id: taskData.listId,
+        title: taskData.title,
+        description: taskData.description || null,
+        due_date: taskData.dueDate ? taskData.dueDate.toISOString() : null,
+      });
+      setTasks(prev => [...prev, newTask]);
+      toast.success('Task created successfully');
+    } catch (error) {
+      console.error('Error creating task:', error);
+      toast.error('Failed to create task');
+    }
   };
 
-  const toggleTask = (taskId: string) => {
-    setTasks(prev =>
-      prev.map(task =>
-        task.id === taskId ? { ...task, completed: !task.completed } : task
-      )
-    );
+  const updateTaskData = async (taskId: string, taskData: { title?: string; description?: string; dueDate?: Date }) => {
+    try {
+      const updated = await updateTask(taskId, {
+        title: taskData.title,
+        description: taskData.description || null,
+        due_date: taskData.dueDate ? taskData.dueDate.toISOString() : null,
+      });
+      setTasks(prev => prev.map(task => task.id === taskId ? updated : task));
+      toast.success('Task updated successfully');
+    } catch (error) {
+      console.error('Error updating task:', error);
+      toast.error('Failed to update task');
+    }
   };
 
-  const deleteTask = (taskId: string) => {
-    setTasks(prev => prev.filter(task => task.id !== taskId));
+  const toggleTask = async (taskId: string) => {
+    try {
+      const updated = await toggleTaskCompletion(taskId);
+      setTasks(prev => prev.map(task => task.id === taskId ? updated : task));
+    } catch (error) {
+      console.error('Error toggling task:', error);
+      toast.error('Failed to update task');
+    }
+  };
+
+  const deleteTaskData = async (taskId: string) => {
+    try {
+      await deleteTask(taskId);
+      setTasks(prev => prev.filter(task => task.id !== taskId));
+      toast.success('Task deleted successfully');
+    } catch (error) {
+      console.error('Error deleting task:', error);
+      toast.error('Failed to delete task');
+    }
+  };
+
+  const reorderTasksData = async (listId: string, taskIds: string[]) => {
+    try {
+      await reorderTasks(listId, taskIds);
+      // Update local state to match new order
+      const otherTasks = tasks.filter(task => task.list_id !== listId);
+      const reorderedTasks = taskIds.map(id => tasks.find(task => task.id === id)).filter(Boolean) as Task[];
+      setTasks([...otherTasks, ...reorderedTasks]);
+    } catch (error) {
+      console.error('Error reordering tasks:', error);
+      toast.error('Failed to reorder tasks');
+    }
+  };
+
+  // Handle AI task creation
+  const handleAITasksCreated = async (listId: string) => {
+    // Reload all data to show the newly created list and tasks
+    await loadData();
+    // Select the newly created list
+    setSelectedListId(listId);
+    // Close the AI chat to show the tasks
+    setIsAIChatOpen(false);
   };
 
   return (
@@ -148,24 +224,31 @@ const TaskManagement = () => {
 
       {/* Main Content */}
       <main className="flex-1 p-6">
-        <div className="flex gap-6">
-          {(selectedListId
-            ? taskLists.filter((list) => list.id === selectedListId)
-            : taskLists
-          ).map((list) => (
-            <TaskCard
-              key={list.id}
-              list={list}
-              tasks={tasks.filter((task) => task.listId === list.id)}
-              onAddTask={addTask}
-              onToggleTask={toggleTask}
-              onDeleteTask={deleteTask}
-              onDeleteList={deleteList}
-              onRenameList={renameList}
-              onUpdateTask={updateTask}
-            />
-          ))}
-        </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center h-full">
+            <p className="text-muted-foreground">Loading tasks...</p>
+          </div>
+        ) : (
+          <div className="flex gap-6">
+            {(selectedListId
+              ? taskLists.filter((list) => list.id === selectedListId)
+              : taskLists
+            ).map((list) => (
+              <TaskCard
+                key={list.id}
+                list={list}
+                tasks={tasks.filter((task) => task.list_id === list.id)}
+                onAddTask={addTask}
+                onToggleTask={toggleTask}
+                onDeleteTask={deleteTaskData}
+                onDeleteList={deleteList}
+                onRenameList={renameList}
+                onUpdateTask={updateTaskData}
+                onReorderTasks={reorderTasksData}
+              />
+            ))}
+          </div>
+        )}
       </main>
 
       {/* Create List Dialog */}
@@ -188,7 +271,11 @@ const TaskManagement = () => {
       </Dialog>
 
       {/* AI Chat Sheet */}
-      <AIChatSheet open={isAIChatOpen} onOpenChange={setIsAIChatOpen} />
+      <AIChatSheet 
+        open={isAIChatOpen} 
+        onOpenChange={setIsAIChatOpen}
+        onTasksCreated={handleAITasksCreated}
+      />
     </div>
   );
 };

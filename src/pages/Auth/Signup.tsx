@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, User, Zap, AlertCircle, Sun, Moon } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { Eye, EyeOff, Mail, Lock, User, Zap, AlertCircle, Chrome, CheckCircle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { supabase } from '@/hooks/supabaseClient';
+import type { ProfileInsert } from '@/types/database.types';
 
 interface SignupFormData {
   name: string;
@@ -14,30 +15,6 @@ interface SignupFormData {
   password: string;
   confirmPassword: string;
 }
-
-// Theme switcher component using next-themes
-const ThemeSwitcher: React.FC = () => {
-  const { theme, setTheme } = useTheme();
-
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
-
-  return (
-    <Button
-      variant="outline"
-      size="icon"
-      onClick={toggleTheme}
-      className="fixed top-4 right-4 h-10 w-10 rounded-full"
-    >
-      {theme === 'dark' ? (
-        <Sun className="h-5 w-5" />
-      ) : (
-        <Moon className="h-5 w-5" />
-      )}
-    </Button>
-  );
-};
 
 const Signup: React.FC = () => {
   const [formData, setFormData] = useState<SignupFormData>({
@@ -51,6 +28,8 @@ const Signup: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Partial<SignupFormData>>({});
   const [agreeToTerms, setAgreeToTerms] = useState(false);
+  const [authError, setAuthError] = useState<string>('');
+  const [successMessage, setSuccessMessage] = useState<string>('');
   const Navigate = useNavigate();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -59,6 +38,13 @@ const Signup: React.FC = () => {
     // Clear error when user starts typing
     if (errors[name as keyof SignupFormData]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+    // Clear auth error and success message when user starts typing
+    if (authError) {
+      setAuthError('');
+    }
+    if (successMessage) {
+      setSuccessMessage('');
     }
   };
 
@@ -100,27 +86,93 @@ const Signup: React.FC = () => {
     if (!validateForm()) return;
     
     if (!agreeToTerms) {
-      alert('Please agree to the terms and conditions');
+      setAuthError('Please agree to the terms and conditions');
       return;
     }
 
     setIsLoading(true);
+    setAuthError('');
+    setSuccessMessage('');
+    
     try {
-      // TODO: Implement signup logic
-      console.log('Signup attempt:', formData);
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
-    } catch (error) {
+      const { data, error } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          data: {
+            full_name: formData.name,
+            name: formData.name,
+          },
+        },
+      });
+      
+      if (error) throw error;
+      
+      // Create profile entry in the profiles table
+      if (data.user) {
+        const profileData: ProfileInsert = {
+          id: data.user.id,
+          email: formData.email,
+          full_name: formData.name,
+        };
+
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert(profileData as any);
+
+        if (profileError) {
+          console.error('Profile creation error:', profileError);
+          // Note: Auth user is created but profile failed
+          // You might want to handle this differently based on your needs
+          throw new Error('Account created but profile setup failed. Please contact support.');
+        }
+      }
+      
+      // Successfully signed up
+      console.log('Signup successful:', data);
+      setSuccessMessage('Account created! Please check your email for verification link.');
+      
+      // Optionally clear the form
+      setFormData({
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: ''
+      });
+      setAgreeToTerms(false);
+      
+      // Redirect to login after 3 seconds
+      setTimeout(() => {
+        Navigate('/');
+      }, 3000);
+      
+    } catch (error: any) {
       console.error('Signup error:', error);
+      setAuthError(error.message || 'Failed to create account. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleGoogleSignup = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Google signup error:', error);
+      setAuthError(error.message || 'Failed to sign up with Google.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-4 relative overflow-y-auto">
-      {/* Theme Switcher */}
-      <ThemeSwitcher />
-      
       <div className="flex items-center justify-center min-h-[calc(100vh-2rem)] py-8">
         <div className="w-full max-w-md space-y-8">
         {/* Header */}
@@ -150,6 +202,24 @@ const Signup: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Success Message */}
+              {successMessage && (
+                <Alert className="bg-green-50 dark:bg-green-950 border-green-200 dark:border-green-800">
+                  <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
+                  <AlertDescription className="text-green-800 dark:text-green-200">
+                    {successMessage}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              {/* Auth Error Alert */}
+              {authError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{authError}</AlertDescription>
+                </Alert>
+              )}
+
               {/* Name Field */}
               <div className="space-y-3">
                 <Label htmlFor="name" className="text-base font-medium">
@@ -325,6 +395,27 @@ const Signup: React.FC = () => {
                 {isLoading ? 'Creating Account...' : 'Create Account'}
               </Button>
             </form>
+
+            {/* Social Media Login divider */}
+            <div className="flex items-center justify-center">
+              <div className="w-full border-t border-muted" />
+              <span className="w-full flex justify-center text-muted-foreground text-sm">or continue with</span>
+              <div className="w-full border-t border-muted" />
+            </div>
+
+            {/* Social Media Signup Buttons */}
+            <div className="flex space-x-4">
+              <Button 
+                type="button"
+                variant="outline" 
+                className="w-full h-12" 
+                onClick={handleGoogleSignup}
+                disabled={isLoading}
+              >
+                <Chrome className="mr-2" />
+                Google
+              </Button>
+            </div>
 
             {/* Footer */}
             <div className="text-center pt-6">

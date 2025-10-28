@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, MoreVertical, Trash2, Edit2, Calendar as CalendarIcon } from 'lucide-react';
+import { Plus, MoreVertical, Trash2, Edit2, Calendar as CalendarIcon, GripVertical } from 'lucide-react';
 import { format } from 'date-fns';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,42 +9,63 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Textarea } from '@/components/ui/textarea';
-
-interface Task {
-  id: string;
-  title: string;
-  completed: boolean;
-  listId: string;
-  description?: string;
-  dueDate?: Date;
-}
-
-interface TaskList {
-  id: string;
-  name: string;
-}
+import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
+import type { Task, TaskList } from '@/types/database.types';
 
 interface TaskCardProps {
   list: TaskList;
   tasks: Task[];
-  onAddTask: (taskData: Omit<Task, 'id' | 'completed'>) => void;
-  onUpdateTask: (taskId: string, taskData: Partial<Omit<Task, 'id'>>) => void;
+  onAddTask: (taskData: { listId: string; title: string; description?: string; dueDate?: Date }) => void;
+  onUpdateTask: (taskId: string, taskData: { title?: string; description?: string; dueDate?: Date }) => void;
   onToggleTask: (taskId: string) => void;
   onDeleteTask: (taskId: string) => void;
   onDeleteList: (listId: string) => void;
   onRenameList: (listId: string, newName: string) => void;
+  onReorderTasks: (listId: string, taskIds: string[]) => void;
 }
 
 const TaskItem: React.FC<{
   task: Task;
   onToggleTask: (taskId: string) => void;
   onDeleteTask: (taskId: string) => void;
-  onUpdateTask: (taskId: string, taskData: Partial<Omit<Task, 'id'>>) => void;
-}> = ({ task, onToggleTask, onDeleteTask, onUpdateTask }) => {
+  onUpdateTask: (taskId: string, taskData: { title?: string; description?: string; dueDate?: Date }) => void;
+  isDraggable?: boolean;
+}> = ({ task, onToggleTask, onDeleteTask, onUpdateTask, isDraggable = true }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedTitle, setEditedTitle] = useState(task.title);
   const [editedDesc, setEditedDesc] = useState(task.description || '');
-  const [editedDate, setEditedDate] = useState(task.dueDate);
+  const [editedDate, setEditedDate] = useState(task.due_date ? new Date(task.due_date) : undefined);
+
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id, disabled: !isDraggable });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
 
   const handleUpdate = () => {
     onUpdateTask(task.id, { 
@@ -85,7 +106,16 @@ const TaskItem: React.FC<{
   }
 
   return (
-    <div className="flex items-start gap-3 group">
+    <div ref={setNodeRef} style={style} className="flex items-start gap-3 group">
+      {isDraggable ? (
+        <div {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing mt-1">
+          <GripVertical className="h-4 w-4 text-muted-foreground" />
+        </div>
+      ) : (
+        <div className="mt-1 w-4">
+          {/* Empty space to maintain alignment */}
+        </div>
+      )}
       <Checkbox
         id={`task-${task.id}`}
         checked={task.completed}
@@ -100,7 +130,7 @@ const TaskItem: React.FC<{
           {task.title}
         </label>
         {task.description && <p className="text-xs text-muted-foreground">{task.description}</p>}
-        {task.dueDate && <p className="text-xs text-muted-foreground">{format(task.dueDate, 'PP')}</p>}
+        {task.due_date && <p className="text-xs text-muted-foreground">{format(new Date(task.due_date), 'PP')}</p>}
       </div>
       <Button variant="ghost" size="icon" className="h-7 w-7 opacity-0 group-hover:opacity-100" onClick={() => onDeleteTask(task.id)}>
         <Trash2 className="h-4 w-4 text-destructive/80" />
@@ -118,7 +148,8 @@ const TaskCard: React.FC<TaskCardProps> = ({
   onDeleteTask,
   onDeleteList,
   onRenameList,
-  onUpdateTask
+  onUpdateTask,
+  onReorderTasks,
 }) => {
   const [newTaskTitle, setNewTaskTitle] = useState('');
   const [newTaskDesc, setNewTaskDesc] = useState('');
@@ -126,6 +157,37 @@ const TaskCard: React.FC<TaskCardProps> = ({
   const [isAdding, setIsAdding] = useState(false);
   const [isRenaming, setIsRenaming] = useState(false);
   const [listName, setListName] = useState(list.name);
+  const [localTasks, setLocalTasks] = useState(tasks);
+
+  // Update local tasks when prop changes
+  React.useEffect(() => {
+    setLocalTasks(tasks);
+  }, [tasks]);
+
+  // Separate incomplete and completed tasks
+  const incompleteTasks = localTasks.filter(task => !task.completed);
+  const completedTasks = localTasks.filter(task => task.completed);
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = incompleteTasks.findIndex((task) => task.id === active.id);
+      const newIndex = incompleteTasks.findIndex((task) => task.id === over.id);
+
+      const newIncompleteOrder = arrayMove(incompleteTasks, oldIndex, newIndex);
+      const newOrder = [...newIncompleteOrder, ...completedTasks];
+      setLocalTasks(newOrder);
+      onReorderTasks(list.id, newOrder.map(t => t.id));
+    }
+  };
 
   const resetNewTaskForm = () => {
     setNewTaskTitle('');
@@ -137,10 +199,10 @@ const TaskCard: React.FC<TaskCardProps> = ({
   const handleAddTask = () => {
     if (newTaskTitle.trim()) {
       onAddTask({ 
+        listId: list.id,
         title: newTaskTitle.trim(), 
-        description: newTaskDesc.trim(),
+        description: newTaskDesc.trim() || undefined,
         dueDate: newTaskDate,
-        listId: list.id 
       });
       resetNewTaskForm();
     }
@@ -192,53 +254,88 @@ const TaskCard: React.FC<TaskCardProps> = ({
         </div>
       </CardHeader>
       <CardContent className="flex-1 overflow-y-auto">
-        <div className="space-y-2">
-          {tasks.map(task => (
-            <TaskItem 
-              key={task.id}
-              task={task}
-              onToggleTask={onToggleTask}
-              onDeleteTask={onDeleteTask}
-              onUpdateTask={onUpdateTask}
-            />
-          ))}
-          {isAdding && (
-            <div className="p-2 border rounded-md space-y-2">
-              <Input
-                placeholder="Task title..."
-                value={newTaskTitle}
-                onChange={(e) => setNewTaskTitle(e.target.value)}
-                autoFocus
-              />
-              <Textarea 
-                placeholder="Description..." 
-                value={newTaskDesc} 
-                onChange={(e) => setNewTaskDesc(e.target.value)} 
-                rows={2}
-              />
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button variant="outline" className="w-full justify-start text-left font-normal">
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {newTaskDate ? format(newTaskDate, 'PPP') : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={newTaskDate}
-                    onSelect={setNewTaskDate}
-                    initialFocus
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={handleDragEnd}
+        >
+          <SortableContext
+            items={incompleteTasks.map((task) => task.id)}
+            strategy={verticalListSortingStrategy}
+          >
+            <div className="space-y-2">
+              {/* Incomplete Tasks */}
+              {incompleteTasks.map(task => (
+                <TaskItem 
+                  key={task.id}
+                  task={task}
+                  onToggleTask={onToggleTask}
+                  onDeleteTask={onDeleteTask}
+                  onUpdateTask={onUpdateTask}
+                  isDraggable={true}
+                />
+              ))}
+              
+              {/* Separator */}
+              {completedTasks.length > 0 && (
+                <div className="flex items-center gap-2 py-2">
+                  <div className="flex-1 h-px bg-border"></div>
+                  <span className="text-xs text-muted-foreground">Completed ({completedTasks.length})</span>
+                  <div className="flex-1 h-px bg-border"></div>
+                </div>
+              )}
+
+              {/* Completed Tasks (Non-draggable) */}
+              {completedTasks.map(task => (
+                <TaskItem 
+                  key={task.id}
+                  task={task}
+                  onToggleTask={onToggleTask}
+                  onDeleteTask={onDeleteTask}
+                  onUpdateTask={onUpdateTask}
+                  isDraggable={false}
+                />
+              ))}
+
+              {isAdding && (
+                <div className="p-2 border rounded-md space-y-2">
+                  <Input
+                    placeholder="Task title..."
+                    value={newTaskTitle}
+                    onChange={(e) => setNewTaskTitle(e.target.value)}
+                    autoFocus
                   />
-                </PopoverContent>
-              </Popover>
-              <div className="flex justify-end gap-2">
-                <Button variant="ghost" size="sm" onClick={resetNewTaskForm}>Cancel</Button>
-                <Button size="sm" onClick={handleAddTask}>Add Task</Button>
-              </div>
+                  <Textarea 
+                    placeholder="Description..." 
+                    value={newTaskDesc} 
+                    onChange={(e) => setNewTaskDesc(e.target.value)} 
+                    rows={2}
+                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="outline" className="w-full justify-start text-left font-normal">
+                        <CalendarIcon className="mr-2 h-4 w-4" />
+                        {newTaskDate ? format(newTaskDate, 'PPP') : <span>Pick a date</span>}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0">
+                      <Calendar
+                        mode="single"
+                        selected={newTaskDate}
+                        onSelect={setNewTaskDate}
+                        initialFocus
+                      />
+                    </PopoverContent>
+                  </Popover>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" size="sm" onClick={resetNewTaskForm}>Cancel</Button>
+                    <Button size="sm" onClick={handleAddTask}>Add Task</Button>
+                  </div>
+                </div>
+              )}
             </div>
-          )}
-        </div>
+          </SortableContext>
+        </DndContext>
       </CardContent>
     </Card>
   );

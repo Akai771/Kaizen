@@ -1,41 +1,17 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Eye, EyeOff, Mail, Lock, Zap, AlertCircle, Sun, Moon, Chrome } from 'lucide-react';
-import { useTheme } from 'next-themes';
+import { Eye, EyeOff, Mail, Lock, Zap, AlertCircle, Chrome } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
+import { supabase } from '@/hooks/supabaseClient';
 
 interface LoginFormData {
   email: string;
   password: string;
 }
-
-// Theme switcher component using next-themes
-const ThemeSwitcher: React.FC = () => {
-  const { theme, setTheme } = useTheme();
-
-  const toggleTheme = () => {
-    setTheme(theme === 'dark' ? 'light' : 'dark');
-  };
-
-  return (
-    <Button
-      variant="outline"
-      size="icon"
-      onClick={toggleTheme}
-      className="fixed top-4 right-4 h-10 w-10 rounded-full"
-    >
-      {theme === 'dark' ? (
-        <Sun className="h-5 w-5" />
-      ) : (
-        <Moon className="h-5 w-5" />
-      )}
-    </Button>
-  );
-};
 
 const Login: React.FC = () => {
   const [formData, setFormData] = useState<LoginFormData>({
@@ -46,6 +22,7 @@ const Login: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [errors, setErrors] = useState<Partial<LoginFormData>>({});
   const [rememberMe, setRememberMe] = useState(false);
+  const [authError, setAuthError] = useState<string>('');
   const Navigate = useNavigate();
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,6 +31,10 @@ const Login: React.FC = () => {
     // Clear error when user starts typing
     if (errors[name as keyof LoginFormData]) {
       setErrors(prev => ({ ...prev, [name]: '' }));
+    }
+    // Clear auth error when user starts typing
+    if (authError) {
+      setAuthError('');
     }
   };
 
@@ -74,11 +55,6 @@ const Login: React.FC = () => {
       newErrors.password = 'Password must be at least 6 characters';
     }
 
-    if(formData.email == 'admin@example.com' && formData.password == 'admin123') {
-      Navigate('/dashboard');
-    
-    }
-
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
@@ -88,22 +64,45 @@ const Login: React.FC = () => {
     if (!validateForm()) return;
 
     setIsLoading(true);
+    setAuthError('');
+    
     try {
-      // TODO: Implement authentication logic
-      console.log('Login attempt:', formData);
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
-    } catch (error) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: formData.email,
+        password: formData.password,
+      });
+      
+      if (error) throw error;
+      
+      // Successfully logged in
+      console.log('Login successful:', data);
+      Navigate('/dashboard');
+    } catch (error: any) {
       console.error('Login error:', error);
+      setAuthError(error.message || 'Failed to login. Please check your credentials.');
     } finally {
       setIsLoading(false);
     }
   };
 
+  const handleGoogleLogin = async () => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'google',
+        options: {
+          redirectTo: `${window.location.origin}/auth/callback`,
+        },
+      });
+      
+      if (error) throw error;
+    } catch (error: any) {
+      console.error('Google login error:', error);
+      setAuthError(error.message || 'Failed to login with Google.');
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 p-4 relative overflow-y-auto">
-      {/* Theme Switcher */}
-      <ThemeSwitcher />
-      
       <div className="flex items-center justify-center min-h-[calc(100vh-2rem)] py-8">
         <div className="w-full max-w-md space-y-8">
         {/* Header */}
@@ -133,6 +132,14 @@ const Login: React.FC = () => {
           </CardHeader>
           <CardContent className="space-y-6">
             <form onSubmit={handleSubmit} className="space-y-6">
+              {/* Auth Error Alert */}
+              {authError && (
+                <Alert variant="destructive">
+                  <AlertCircle className="h-4 w-4" />
+                  <AlertDescription>{authError}</AlertDescription>
+                </Alert>
+              )}
+
               {/* Email Field */}
               <div className="space-y-3">
                 <Label htmlFor="email" className="text-base font-medium">
@@ -250,8 +257,14 @@ const Login: React.FC = () => {
 
             {/* Social Media Login Buttons */}
             <div className="flex space-x-4">
-              <Button variant="outline" className="w-full h-12" onClick={() => Navigate('/task-management')}>
-                <Chrome/>
+              <Button 
+                type="button"
+                variant="outline" 
+                className="w-full h-12" 
+                onClick={handleGoogleLogin}
+                disabled={isLoading}
+              >
+                <Chrome className="mr-2" />
                 Google
               </Button>
             </div>
