@@ -4,13 +4,13 @@
 
 ## Features
 
-- ✅ **Task Management**: Create, organize, and manage your tasks efficiently
-- 🤖 **AI-Powered Assistant**: Meet Hiro, your intelligent task helper powered by OpenAI GPT-3.5
-- 📋 **Task Lists**: Organize tasks into custom lists
-- 🎯 **Smart Task Creation**: Use natural language to create tasks automatically
-- 💰 **Expense Management**: Track your expenses alongside tasks
-- 🌙 **Dark Mode**: Easy on the eyes with full dark mode support
-- 🔒 **Secure Authentication**: Powered by Supabase Auth
+- **Task Management**: Create, organize, and manage your tasks efficiently
+- **AI-Powered Assistant**: Meet Hiro, your intelligent task helper powered by OpenAI GPT-3.5
+- **Task Lists**: Organize tasks into custom lists
+- **Smart Task Creation**: Use natural language to create tasks automatically
+- **Expense Management**: Track your expenses alongside tasks
+- **Dark Mode**: Easy on the eyes with full dark mode support
+- **Secure Authentication**: Powered by Supabase Auth
 
 ## Quick Start
 
@@ -53,10 +53,10 @@ npm run electron:dev
 Hiro is an intelligent AI assistant that helps you create and manage tasks using natural language. Simply tell Hiro what you want to accomplish, and it will automatically create organized task lists for you.
 
 **Example commands:**
-- "Create a list for planning a birthday party"
-- "Help me plan a vacation to Japan"
-- "Make a grocery shopping list"
-- "I need to prepare for a job interview"
+- "Create a list for planning a birthday party."
+- "Help me plan a vacation to Japan."
+- "Make a grocery shopping list."
+- "I need to prepare for a job interview."
 
 For detailed information about the AI assistant, see [AI_ASSISTANT_README.md](./AI_ASSISTANT_README.md).
 
